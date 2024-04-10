@@ -43,9 +43,16 @@ type configBuilder struct {
 }
 
 func (in *configBuilder) buildBaseConfig() (*rest.Config, error) {
+	var config rest.Config
+
 	if len(in.kubeconfigPath) == 0 && len(in.masterUrl) == 0 {
 		klog.Info("Using in-cluster config")
-		return rest.InClusterConfig()
+		ic, err := rest.InClusterConfig()
+		if err != nil {
+			return nil, err
+		} else {
+			config = *ic
+		}
 	}
 
 	if len(in.kubeconfigPath) > 0 {
@@ -56,9 +63,11 @@ func (in *configBuilder) buildBaseConfig() (*rest.Config, error) {
 		klog.InfoS("Using apiserver-host location", "masterUrl", in.masterUrl)
 	}
 
-	config, err := clientcmd.BuildConfigFromFlags(in.masterUrl, in.kubeconfigPath)
+	flags, err := clientcmd.BuildConfigFromFlags(in.masterUrl, in.kubeconfigPath)
 	if err != nil {
 		return nil, err
+	} else {
+		config = *flags
 	}
 
 	config.QPS = DefaultQPS
@@ -67,7 +76,7 @@ func (in *configBuilder) buildBaseConfig() (*rest.Config, error) {
 	config.UserAgent = DefaultUserAgent + "/" + in.userAgent
 	config.TLSClientConfig.Insecure = in.insecure
 
-	return config, nil
+	return &config, nil
 }
 
 func newConfigBuilder(options ...Option) *configBuilder {
